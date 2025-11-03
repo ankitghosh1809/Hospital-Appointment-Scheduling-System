@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 DB_CONFIG = DATABASE_URL
 
 EMAIL_CONFIG = {

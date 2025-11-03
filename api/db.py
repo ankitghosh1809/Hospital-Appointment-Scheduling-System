@@ -1,6 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
@@ -13,8 +12,6 @@ def get_connection():
 
 def execute_query(query, params=None, fetch=False):
     conn = get_connection()
-    if not conn:
-        return None
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     result = None
     try:
