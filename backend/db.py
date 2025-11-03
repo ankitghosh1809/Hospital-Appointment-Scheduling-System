@@ -1,37 +1,34 @@
-import mysql.connector
-from mysql.connector import Error
-from config import DB_CONFIG
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import psycopg2
+import psycopg2.extras
+from dotenv import load_dotenv
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
-    except Error as e:
-        print(f"[DB Error] {e}")
-        return None
-
+    return psycopg2.connect(DATABASE_URL)
 
 def execute_query(query, params=None, fetch=False):
     conn = get_connection()
     if not conn:
         return None
-
-    cursor = conn.cursor(dictionary=True)
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     result = None
-
     try:
-        cursor.execute(query, params or ())
+        cur.execute(query, params or ())
         if fetch:
-            result = cursor.fetchall()
+            result = [dict(r) for r in cur.fetchall()]
         else:
             conn.commit()
-            result = cursor.lastrowid
-    except Error as e:
-        print(f"[Query Error] {e}")
+            row = cur.fetchone()
+            result = list(row.values())[0] if row else cur.rowcount
+    except Exception as e:
         conn.rollback()
+        raise e
     finally:
-        cursor.close()
+        cur.close()
         conn.close()
-
     return result
