@@ -3,7 +3,7 @@
    Connects to Flask API at http://localhost:5000/api
    ============================================================ */
 
-const API = "http://localhost:5000/api";
+const API = "/api";
 
 // ── STATE ──────────────────────────────────────────────────────
 
