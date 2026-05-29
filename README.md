@@ -127,3 +127,6 @@ Run these as cron jobs to send reminders and daily summaries:
 ## License
 
 MIT
+
+## 🌐 Live Demo
+[https://hospital-appointment-scheduling-sys.vercel.app](https://hospital-appointment-scheduling-sys.vercel.app)
