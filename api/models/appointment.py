@@ -8,6 +8,7 @@ def book_appointment(patient_id, doctor_id, date, time, reason=None):
     query = """
         INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, reason)
         VALUES (%s, %s, %s, %s, %s)
+        RETURNING appointment_id
     """
     return execute_query(query, (patient_id, doctor_id, date, time, reason))
 

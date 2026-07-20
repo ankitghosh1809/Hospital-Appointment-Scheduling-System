@@ -5,6 +5,7 @@ def add_patient(name, email, phone, dob=None, address=None):
     query = """
         INSERT INTO patients (name, email, phone, date_of_birth, address)
         VALUES (%s, %s, %s, %s, %s)
+        RETURNING patient_id
     """
     return execute_query(query, (name, email, phone, dob, address))
 

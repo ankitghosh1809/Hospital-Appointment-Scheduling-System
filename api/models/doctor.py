@@ -20,5 +20,6 @@ def add_doctor(name, specialization, email, phone, avail_from="09:00:00", avail_
     query = """
         INSERT INTO doctors (name, specialization, email, phone, available_from, available_to)
         VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING doctor_id
     """
     return execute_query(query, (name, specialization, email, phone, avail_from, avail_to))

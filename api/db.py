@@ -25,8 +25,14 @@ def execute_query(query, params=None, fetch=False):
             result = [dict(r) for r in cur.fetchall()]
         else:
             conn.commit()
-            row = cur.fetchone()
-            result = list(row.values())[0] if row else cur.rowcount
+            # cur.description is None unless the statement had a RETURNING
+            # clause (or was a SELECT). Calling fetchone() without one
+            # raises psycopg2.ProgrammingError: no results to fetch.
+            if cur.description is not None:
+                row = cur.fetchone()
+                result = list(row.values())[0] if row else None
+            else:
+                result = cur.rowcount
     except Exception as e:
         conn.rollback()
         raise e
