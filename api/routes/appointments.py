@@ -1,4 +1,3 @@
-import datetime
 from flask import Blueprint, jsonify, request
 from models.appointment import (
     book_appointment,
@@ -11,21 +10,9 @@ from models.appointment import (
 from models.patient import get_patient_by_email, add_patient
 from services.payment import create_payment
 from config import DEFAULT_FEE
+from utils import clean_row as clean
 
 appointments_bp = Blueprint("appointments", __name__)
-
-
-def clean(row):
-    result = {}
-    for k, v in row.items():
-        if isinstance(v, (datetime.date, datetime.datetime)):
-            result[k] = str(v)
-        elif hasattr(v, "total_seconds"):
-            total = int(v.total_seconds())
-            result[k] = f"{total // 3600:02d}:{(total % 3600) // 60:02d}"
-        else:
-            result[k] = v
-    return result
 
 
 @appointments_bp.route("/", methods=["GET"])

@@ -2,6 +2,7 @@ import datetime
 from flask import Blueprint, jsonify, request
 from models.doctor import get_all_doctors, get_doctor_by_id, get_doctors_by_specialization, add_doctor
 from models.appointment import get_appointments_by_doctor_and_date, is_slot_available
+from utils import clean_row, to_jsonable
 
 doctors_bp = Blueprint("doctors", __name__)
 
@@ -14,14 +15,7 @@ def list_doctors():
     else:
         doctors = get_all_doctors()
 
-    # convert timedelta to string for JSON
-    for d in (doctors or []):
-        for field in ["available_from", "available_to"]:
-            if field in d and hasattr(d[field], "seconds"):
-                total = int(d[field].total_seconds())
-                d[field] = f"{total // 3600:02d}:{(total % 3600) // 60:02d}"
-
-    return jsonify(doctors or [])
+    return jsonify([clean_row(d) for d in (doctors or [])])
 
 
 @doctors_bp.route("/<int:doctor_id>", methods=["GET"])
@@ -30,12 +24,7 @@ def get_doctor(doctor_id):
     if not doctor:
         return jsonify({"error": "Doctor not found"}), 404
 
-    for field in ["available_from", "available_to"]:
-        if field in doctor and hasattr(doctor[field], "seconds"):
-            total = int(doctor[field].total_seconds())
-            doctor[field] = f"{total // 3600:02d}:{(total % 3600) // 60:02d}"
-
-    return jsonify(doctor)
+    return jsonify(clean_row(doctor))
 
 
 @doctors_bp.route("/<int:doctor_id>/slots", methods=["GET"])
