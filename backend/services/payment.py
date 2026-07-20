@@ -3,7 +3,11 @@ from db import execute_query
 
 def create_payment(appointment_id, amount, method="cash"):
     return execute_query(
-        "INSERT INTO payments (appointment_id, amount, payment_method, status) VALUES (%s, %s, %s, 'pending')",
+        """
+        INSERT INTO payments (appointment_id, amount, payment_method, status)
+        VALUES (%s, %s, %s, 'pending')
+        RETURNING payment_id
+        """,
         (appointment_id, amount, method),
     )
 

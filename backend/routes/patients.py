@@ -1,20 +1,9 @@
 from flask import Blueprint, jsonify, request
 from models.patient import add_patient, get_patient_by_email, get_patient_by_id, get_all_patients
 from models.appointment import get_appointments_by_patient
+from utils import clean_row as clean
 
 patients_bp = Blueprint("patients", __name__)
-
-
-def serialize(obj):
-    """Convert date/timedelta objects to strings for JSON."""
-    import datetime
-    if isinstance(obj, (datetime.date, datetime.datetime)):
-        return str(obj)
-    return obj
-
-
-def clean(row):
-    return {k: serialize(v) for k, v in row.items()}
 
 
 @patients_bp.route("/", methods=["GET"])
