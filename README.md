@@ -2,7 +2,7 @@
 
 A full-stack hospital appointment management system built with **Python (Flask)** on the backend and **vanilla HTML/CSS/JS** on the frontend.
 
-![Tech Stack](https://img.shields.io/badge/Backend-Flask%20%2B%20MySQL-1a6b7c) ![Frontend](https://img.shields.io/badge/Frontend-HTML%20%2F%20CSS%20%2F%20JS-d95f3b)
+![Tech Stack](https://img.shields.io/badge/Backend-Flask%20%2B%20PostgreSQL-1a6b7c) ![Frontend](https://img.shields.io/badge/Frontend-HTML%20%2F%20CSS%20%2F%20JS-d95f3b)
 
 ---
 
@@ -22,11 +22,14 @@ A full-stack hospital appointment management system built with **Python (Flask)*
 
 ```
 hospital-system/
+├── api/                      # Mirror of backend/, used by Vercel (see vercel.json)
+│   └── index.py              # Serverless entry point -> imports app from api/app.py
 ├── backend/
 │   ├── app.py               # Flask entry point + blueprint registration
 │   ├── config.py            # Env-based configuration
-│   ├── db.py                # MySQL connection helper
-│   ├── schema.sql           # DB setup script (run once)
+│   ├── db.py                # PostgreSQL connection helper (psycopg2)
+│   ├── utils.py              # Shared JSON-serialization helpers
+│   ├── schema.sql           # DB setup script (run once, PostgreSQL syntax)
 │   ├── .env.example         # Copy to .env and fill in
 │   ├── requirements.txt
 │   ├── models/
@@ -46,6 +49,12 @@ hospital-system/
     ├── styles.css           # Full custom design system
     └── app.js               # API calls, routing, UI logic
 ```
+
+> **Note:** `api/` and `backend/` currently contain duplicate application code.
+> `vercel.json` only builds from `api/`, while these setup instructions run
+> the app from `backend/` for local development. If you change application
+> logic, update both, or consider consolidating them (e.g. importing backend/
+> from api/index.py) to avoid drift between the two.
 
 ---
 
@@ -78,8 +87,11 @@ cd hospital-appointment-system
 
 ### 2. Set up the database
 
+Create a PostgreSQL database (e.g. a free [Neon](https://neon.tech) project),
+then run the schema against it:
+
 ```bash
-mysql -u root -p < backend/schema.sql
+psql "$DATABASE_URL" -f backend/schema.sql
 ```
 
 ### 3. Configure the backend
@@ -87,7 +99,7 @@ mysql -u root -p < backend/schema.sql
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your MySQL credentials and email settings
+# Edit .env with your DATABASE_URL (Postgres connection string) and email settings
 ```
 
 ### 4. Install dependencies and run Flask
@@ -119,8 +131,8 @@ Run these as cron jobs to send reminders and daily summaries:
 
 ## Tech Stack
 
-- **Backend** — Python 3, Flask, Flask-CORS, mysql-connector-python
-- **Database** — MySQL
+- **Backend** — Python 3, Flask, Flask-CORS, psycopg2
+- **Database** — PostgreSQL (Neon)
 - **Frontend** — HTML5, CSS3, Vanilla JavaScript (no frameworks)
 - **Email** — Python smtplib + Gmail SMTP
 
