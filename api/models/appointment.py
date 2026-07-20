@@ -95,8 +95,8 @@ def get_upcoming_appointments(hours_ahead=24):
         JOIN patients p ON a.patient_id = p.patient_id
         JOIN doctors d ON a.doctor_id = d.doctor_id
         WHERE a.status = 'scheduled'
-          AND TIMESTAMP(a.appointment_date, a.appointment_time)
-              BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL %s HOUR)
+          AND (a.appointment_date + a.appointment_time)
+              BETWEEN NOW() AND NOW() + (%s * INTERVAL '1 hour')
           AND a.appointment_id NOT IN (SELECT appointment_id FROM reminders)
         """,
         (hours_ahead,),
