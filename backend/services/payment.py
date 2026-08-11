@@ -13,15 +13,17 @@ def create_payment(appointment_id, amount, method="cash"):
 
 
 def mark_payment_paid(appointment_id, method="cash"):
-    execute_query(
+    return execute_query(
         "UPDATE payments SET status = 'paid', payment_method = %s WHERE appointment_id = %s",
         (method, appointment_id),
     )
 
 
 def mark_payment_refunded(appointment_id):
-    execute_query(
-        "UPDATE payments SET status = 'refunded' WHERE appointment_id = %s",
+    # only flips payments that were actually collected - leaves 'pending'
+    # (never paid) and already-'refunded' payments untouched
+    return execute_query(
+        "UPDATE payments SET status = 'refunded' WHERE appointment_id = %s AND status = 'paid'",
         (appointment_id,),
     )
 

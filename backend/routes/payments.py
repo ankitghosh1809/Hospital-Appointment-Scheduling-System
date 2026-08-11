@@ -26,13 +26,17 @@ def payment_status(appointment_id):
 
 @payments_bp.route("/<int:appointment_id>/pay", methods=["PATCH"])
 def pay(appointment_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     method = data.get("method", "cash")
-    mark_payment_paid(appointment_id, method)
+    rows = mark_payment_paid(appointment_id, method)
+    if not rows:
+        return jsonify({"error": "No payment record found for that appointment"}), 404
     return jsonify({"message": "Payment recorded", "method": method})
 
 
 @payments_bp.route("/<int:appointment_id>/refund", methods=["PATCH"])
 def refund(appointment_id):
-    mark_payment_refunded(appointment_id)
+    rows = mark_payment_refunded(appointment_id)
+    if not rows:
+        return jsonify({"error": "No paid payment found to refund for that appointment"}), 404
     return jsonify({"message": "Refund processed"})

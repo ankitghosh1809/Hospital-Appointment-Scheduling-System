@@ -14,7 +14,7 @@ def list_patients():
 
 @patients_bp.route("/", methods=["POST"])
 def create_patient():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     if not data.get("name") or not data.get("email"):
         return jsonify({"error": "name and email are required"}), 400
 
