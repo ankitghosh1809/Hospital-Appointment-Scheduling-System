@@ -14,3 +14,10 @@ EMAIL_CONFIG = {
 }
 
 DEFAULT_FEE = float(os.getenv("DEFAULT_FEE", 500))
+
+# The app has no per-user timezone concept - one hospital, one local clock.
+# India doesn't observe DST, so a fixed UTC+5:30 offset is exact (and needs
+# no system tzdata, unlike zoneinfo - important since the server/serverless
+# runtime this runs on is typically UTC, not IST).
+import datetime
+HOSPITAL_TZ = datetime.timezone(datetime.timedelta(hours=5, minutes=30))

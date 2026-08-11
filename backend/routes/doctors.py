@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from models.doctor import get_all_doctors, get_doctor_by_id, get_doctors_by_specialization, add_doctor
 from models.appointment import get_appointments_by_doctor_and_date, is_slot_available
 from utils import clean_row, to_jsonable
+from config import HOSPITAL_TZ
 
 doctors_bp = Blueprint("doctors", __name__)
 
@@ -60,12 +61,16 @@ def get_slots(doctor_id):
     start = datetime.datetime.strptime(avail_from, "%H:%M")
     end = datetime.datetime.strptime(avail_to, "%H:%M")
 
+    is_today = date == datetime.datetime.now(HOSPITAL_TZ).date().isoformat()
+    now_time = datetime.datetime.now(HOSPITAL_TZ).time()
+
     slots = []
     current = start
     while current < end:
         slot_str = current.strftime("%H:%M:%S")
         slot_display = current.strftime("%H:%M")
-        if slot_str not in booked_times:
+        already_passed = is_today and current.time() <= now_time
+        if slot_str not in booked_times and not already_passed:
             slots.append(slot_display)
         current += datetime.timedelta(minutes=30)
 
@@ -74,7 +79,7 @@ def get_slots(doctor_id):
 
 @doctors_bp.route("/", methods=["POST"])
 def create_doctor():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     required = ["name", "specialization", "email", "phone"]
     if not all(k in data for k in required):
         return jsonify({"error": "name, specialization, email, phone required"}), 400

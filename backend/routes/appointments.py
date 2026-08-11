@@ -1,4 +1,6 @@
+import datetime
 from flask import Blueprint, jsonify, request
+from config import HOSPITAL_TZ
 from models.appointment import (
     book_appointment,
     cancel_appointment,
@@ -23,11 +25,18 @@ def list_appointments():
 
 @appointments_bp.route("/", methods=["POST"])
 def create_appointment():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     required = ["email", "name", "doctor_id", "date", "time"]
     if not all(k in data for k in required):
         return jsonify({"error": f"Required fields: {', '.join(required)}"}), 400
+
+    try:
+        appt_date = datetime.date.fromisoformat(data["date"])
+    except (TypeError, ValueError):
+        return jsonify({"error": "date must be in YYYY-MM-DD format"}), 400
+    if appt_date < datetime.datetime.now(HOSPITAL_TZ).date():
+        return jsonify({"error": "Cannot book an appointment in the past"}), 400
 
     # get or create patient
     patient = get_patient_by_email(data["email"])
@@ -89,7 +98,9 @@ def cancel(appointment_id):
 
 @appointments_bp.route("/<int:appointment_id>/complete", methods=["PATCH"])
 def complete(appointment_id):
-    complete_appointment(appointment_id)
+    rows = complete_appointment(appointment_id)
+    if not rows:
+        return jsonify({"error": "Appointment not found"}), 404
     return jsonify({"message": "Marked as completed"})
 
 

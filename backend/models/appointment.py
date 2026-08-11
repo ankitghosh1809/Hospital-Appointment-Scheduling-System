@@ -1,4 +1,6 @@
+import psycopg2
 from db import execute_query
+from services.payment import mark_payment_refunded
 
 
 def book_appointment(patient_id, doctor_id, date, time, reason=None):
@@ -10,7 +12,13 @@ def book_appointment(patient_id, doctor_id, date, time, reason=None):
         VALUES (%s, %s, %s, %s, %s)
         RETURNING appointment_id
     """
-    return execute_query(query, (patient_id, doctor_id, date, time, reason))
+    try:
+        return execute_query(query, (patient_id, doctor_id, date, time, reason))
+    except psycopg2.errors.UniqueViolation:
+        # Two requests passed is_slot_available() at the same time and both
+        # tried to insert - the DB-level unique index (see schema.sql) is
+        # the real guard; the pre-check above is just an optimization.
+        return None
 
 
 def is_slot_available(doctor_id, date, time):
@@ -27,14 +35,17 @@ def is_slot_available(doctor_id, date, time):
 
 
 def cancel_appointment(appointment_id):
-    execute_query(
+    rows = execute_query(
         "UPDATE appointments SET status = 'cancelled' WHERE appointment_id = %s",
         (appointment_id,),
     )
+    # flag it for refund if it had already been paid - no-op otherwise
+    mark_payment_refunded(appointment_id)
+    return rows
 
 
 def complete_appointment(appointment_id):
-    execute_query(
+    return execute_query(
         "UPDATE appointments SET status = 'completed' WHERE appointment_id = %s",
         (appointment_id,),
     )

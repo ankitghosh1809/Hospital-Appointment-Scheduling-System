@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS appointments (
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Prevents two concurrent requests from both booking the same doctor's
+-- slot (app-level check in is_slot_available() alone can't close this -
+-- see models/appointment.py::book_appointment).
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_doctor_slot
+    ON appointments (doctor_id, appointment_date, appointment_time)
+    WHERE status = 'scheduled';
+
 CREATE TABLE IF NOT EXISTS payments (
     payment_id      SERIAL         PRIMARY KEY,
     appointment_id  INT            NOT NULL REFERENCES appointments(appointment_id),
