@@ -7,20 +7,39 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Reused across calls (and across warm serverless invocations) instead of
+# opening a fresh TCP+TLS+auth connection to Neon on every single query.
+_conn = None
+
+
 def get_connection():
+    global _conn
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL environment variable is not set. "
             "Add it in Vercel → Settings → Environment Variables."
         )
-    return psycopg2.connect(DATABASE_URL)
+    if _conn is None or _conn.closed:
+        _conn = psycopg2.connect(DATABASE_URL)
+    return _conn
+
 
 def execute_query(query, params=None, fetch=False):
+    global _conn
     conn = get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    result = None
     try:
-        cur.execute(query, params or ())
+        try:
+            cur.execute(query, params or ())
+        except psycopg2.OperationalError:
+            # cached connection died between requests (e.g. Neon closed it
+            # after being idle) - reconnect once and retry
+            cur.close()
+            _conn = psycopg2.connect(DATABASE_URL)
+            conn = _conn
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(query, params or ())
+
         if fetch:
             result = [dict(r) for r in cur.fetchall()]
         else:
@@ -38,5 +57,4 @@ def execute_query(query, params=None, fetch=False):
         raise e
     finally:
         cur.close()
-        conn.close()
     return result
