@@ -22,39 +22,38 @@ A full-stack hospital appointment management system built with **Python (Flask)*
 
 ```
 hospital-system/
-├── api/                      # Mirror of backend/, used by Vercel (see vercel.json)
-│   └── index.py              # Serverless entry point -> imports app from api/app.py
-├── backend/
-│   ├── app.py               # Flask entry point + blueprint registration
-│   ├── config.py            # Env-based configuration
-│   ├── db.py                # PostgreSQL connection helper (psycopg2)
-│   ├── utils.py              # Shared JSON-serialization helpers
-│   ├── schema.sql           # DB setup script (run once, PostgreSQL syntax)
-│   ├── .env.example         # Copy to .env and fill in
+├── api/
+│   └── index.py              # Serverless entry point -> imports app from backend/app.py
+├── backend/                   # Single source of truth for the app
+│   ├── app.py                # Flask entry point + blueprint registration
+│   ├── config.py             # Env-based configuration
+│   ├── db.py                 # PostgreSQL connection helper (psycopg2)
+│   ├── utils.py               # Shared JSON-serialization helpers
+│   ├── schema.sql            # DB setup script (run once, PostgreSQL syntax)
+│   ├── .env.example          # Copy to .env and fill in
 │   ├── requirements.txt
 │   ├── models/
 │   │   ├── patient.py
 │   │   ├── doctor.py
 │   │   └── appointment.py
 │   ├── routes/
-│   │   ├── appointments.py  # POST/GET/PATCH /api/appointments
-│   │   ├── doctors.py       # GET /api/doctors, GET /api/doctors/:id/slots
-│   │   ├── patients.py      # POST/GET /api/patients
-│   │   └── payments.py      # PATCH /api/payments/:id/pay
+│   │   ├── appointments.py   # POST/GET/PATCH /api/appointments
+│   │   ├── doctors.py        # GET /api/doctors, GET /api/doctors/:id/slots
+│   │   ├── patients.py       # POST/GET /api/patients
+│   │   └── payments.py       # PATCH /api/payments/:id/pay
 │   └── services/
 │       ├── payment.py
 │       └── reminder.py
 └── frontend/
-    ├── index.html           # Single-page app shell
-    ├── styles.css           # Full custom design system
-    └── app.js               # API calls, routing, UI logic
+    ├── index.html            # Single-page app shell
+    ├── styles.css            # Full custom design system
+    └── app.js                # API calls, routing, UI logic
 ```
 
-> **Note:** `api/` and `backend/` currently contain duplicate application code.
-> `vercel.json` only builds from `api/`, while these setup instructions run
-> the app from `backend/` for local development. If you change application
-> logic, update both, or consider consolidating them (e.g. importing backend/
-> from api/index.py) to avoid drift between the two.
+> **Note:** `api/index.py` adds `backend/` to `sys.path` and imports the
+> Flask app from there — there's only one copy of the application code now.
+> `vercel.json` uses `includeFiles` to make sure `backend/` is bundled into
+> the deployed function even though the build only points at `api/index.py`.
 
 ---
 
@@ -94,6 +93,16 @@ then run the schema against it:
 psql "$DATABASE_URL" -f backend/schema.sql
 ```
 
+> **Already have a database from before?** `schema.sql` now adds a unique
+> index that stops two requests from double-booking the same doctor slot.
+> Run just that part against your existing DB:
+> ```bash
+> psql "$DATABASE_URL" -c "CREATE UNIQUE INDEX IF NOT EXISTS uniq_doctor_slot ON appointments (doctor_id, appointment_date, appointment_time) WHERE status = 'scheduled';"
+> ```
+> If that fails with a duplicate-key error, you already have two `scheduled`
+> rows for the same doctor/date/time — cancel or reschedule one of them, then
+> re-run the command above.
+
 ### 3. Configure the backend
 
 ```bash
@@ -125,6 +134,9 @@ Run these as cron jobs to send reminders and daily summaries:
 ```bash
 # Reminder emails — run daily at 8 AM
 0 8 * * * cd /path/to/backend && python -c "from services.reminder import send_reminders; send_reminders()"
+
+# Daily doctor schedule summaries — run daily at 7 AM
+0 7 * * * cd /path/to/backend && python -c "from services.reminder import send_daily_doctor_summaries; send_daily_doctor_summaries()"
 ```
 
 ---
