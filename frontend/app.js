@@ -3,7 +3,13 @@
    Connects to Flask API at http://localhost:5000/api
    ============================================================ */
 
-const API = "/api";
+// On Vercel, frontend and API share one origin (see vercel.json), so a
+// relative path works. Locally, the frontend is typically served on its
+// own port (e.g. `python -m http.server 8080`) while Flask runs on 5000 -
+// a relative path there would hit the static server, not Flask.
+const API = (location.protocol === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")
+  ? "http://localhost:5000/api"
+  : "/api";
 
 // ── STATE ──────────────────────────────────────────────────────
 
@@ -18,6 +24,15 @@ const state = {
 
 function $(id) { return document.getElementById(id); }
 function $$(sel) { return document.querySelectorAll(sel); }
+
+// Any value that came from the API (patient/doctor name, phone, email...)
+// is free text someone typed into a form - never trust it inside innerHTML
+// without escaping it first.
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
 
 function toast(msg, type = "") {
   const el = $("toast");
@@ -79,8 +94,23 @@ $$(".nav-item").forEach(item => {
   item.addEventListener("click", e => {
     e.preventDefault();
     navigate(item.dataset.view);
+    closeMobileNav();
   });
 });
+
+// mobile sidebar (hidden off-screen below 768px, see styles.css) needs an
+// explicit way back in - there's no other way to switch views on mobile
+function closeMobileNav() {
+  $("sidebar").classList.remove("open");
+  $("sidebar-backdrop").classList.remove("open");
+}
+
+$("mobile-nav-toggle").addEventListener("click", () => {
+  $("sidebar").classList.toggle("open");
+  $("sidebar-backdrop").classList.toggle("open");
+});
+
+$("sidebar-backdrop").addEventListener("click", closeMobileNav);
 
 // "View all" buttons
 $$("[data-view]").forEach(btn => {
@@ -154,8 +184,8 @@ function renderAppointmentsTable(appts, containerId, showActions = true) {
   const rows = appts.map(a => `
     <tr>
       <td><strong>#${a.appointment_id}</strong></td>
-      <td>${a.patient_name || "—"}</td>
-      <td>${a.doctor_name || "—"}</td>
+      <td>${esc(a.patient_name) || "—"}</td>
+      <td>${esc(a.doctor_name) || "—"}</td>
       <td>${formatDate(a.appointment_date)}</td>
       <td>${formatTime(a.appointment_time)}</td>
       <td><span class="badge badge-${a.status}">${a.status}</span></td>
@@ -196,7 +226,7 @@ async function loadDoctorsForBooking() {
   state.doctors = res.data;
   const select = $("b-doctor");
   select.innerHTML = '<option value="">— Select a doctor —</option>' +
-    res.data.map(d => `<option value="${d.doctor_id}">${d.name} — ${d.specialization}</option>`).join("");
+    res.data.map(d => `<option value="${d.doctor_id}">${esc(d.name)} — ${esc(d.specialization)}</option>`).join("");
 }
 
 $("b-doctor").addEventListener("change", maybeLoadSlots);
@@ -297,9 +327,9 @@ async function searchPatientAppts() {
 
   $("appt-results").innerHTML = `
     <div class="patient-info-bar">
-      <span><strong>${patient.name}</strong></span>
-      <span>${patient.email}</span>
-      ${patient.phone ? `<span>📞 ${patient.phone}</span>` : ""}
+      <span><strong>${esc(patient.name)}</strong></span>
+      <span>${esc(patient.email)}</span>
+      ${patient.phone ? `<span>📞 ${esc(patient.phone)}</span>` : ""}
       <span style="margin-left:auto; color: var(--text-muted)">Patient ID: ${patient.patient_id}</span>
     </div>
     <div class="table-wrap" id="patient-appts-table"></div>
@@ -346,11 +376,11 @@ async function renderDoctors(filter = "") {
 
   grid.innerHTML = filtered.map(d => `
     <div class="doctor-card">
-      <div class="doctor-avatar">${getInitials(d.name)}</div>
-      <div class="doctor-name">${d.name}</div>
-      <div class="doctor-spec">${d.specialization}</div>
+      <div class="doctor-avatar">${esc(getInitials(d.name))}</div>
+      <div class="doctor-name">${esc(d.name)}</div>
+      <div class="doctor-spec">${esc(d.specialization)}</div>
       <div class="doctor-meta">
-        <span>📞 ${d.phone || "N/A"}</span>
+        <span>📞 ${esc(d.phone) || "N/A"}</span>
         <span>🕐 ${formatTime(d.available_from + ":00")} – ${formatTime(d.available_to + ":00")}</span>
       </div>
       <button class="doc-book-btn" onclick="bookWithDoctor(${d.doctor_id})">Book Appointment →</button>
@@ -390,8 +420,8 @@ async function loadPendingPayments() {
   const rows = payments.map(p => `
     <tr>
       <td><strong>#${p.appointment_id}</strong></td>
-      <td>${p.patient_name}</td>
-      <td>${p.doctor_name}</td>
+      <td>${esc(p.patient_name)}</td>
+      <td>${esc(p.doctor_name)}</td>
       <td>${formatDate(p.appointment_date)}</td>
       <td><strong>₹${parseFloat(p.amount).toLocaleString("en-IN")}</strong></td>
       <td><span class="badge badge-pending">Pending</span></td>
